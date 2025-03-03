@@ -1,45 +1,92 @@
 import { Request, Response, NextFunction } from "express";
 import { Todo } from "../models/todo";
+import TodoSchema from "../models/schema";
 
-type RequestBody = { text: string };
+type RequestBody = { name: string; quantity: number };
 type RequestParams = { todoId: string };
 
-let todos: Todo[] = [];
-
-export const getTodo = (req: Request, res: Response, next: NextFunction) => {
-  res.status(200).json({ todos: todos });
+// Get all todos
+export const getTodo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const data = await TodoSchema.find();
+    res.status(200).json({ data: data });
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const addTodo = (req: Request, res: Response, next: NextFunction) => {
-  const body = req.body as RequestBody;
-  const newTodo: Todo = {
-    id: new Date().toISOString(),
-    text: body.text,
-  };
+// Add a new todo
+export const addTodo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const body: RequestBody = req.body;
+  try {
+    const newTodo = new TodoSchema({
+      name: body.name,
+      quantity: body.quantity,
+    });
 
-  todos.push(newTodo);
+    await newTodo.save();
 
-  res.status(201).json({ message: "Todo Added!", todo: newTodo });
+    res.status(201).json({ message: "Todo Added!", todo: newTodo });
+  } catch (err) {
+    next(err);
+  }
 };
 
-export const updateTodo = (req: Request, res: Response, next: NextFunction): any => {
-  const params = req.params as RequestParams;
-  const tId = params.todoId;
-  const body = req.body as RequestBody;
-  //Reaching out to exact todo data from array of todo
-  const todoIndex = todos.findIndex((t) => t.id === tId);
-  if (todoIndex >= 0) {
-    todos[todoIndex] = { id: todos[todoIndex].id, text: body.text };
+// Update a todo
+export const updateTodo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { todoId } = req.params; // ✅ Destructure `todoId`
+    const { name, quantity }: RequestBody = req.body;
+
+    //Reaching out to database
+    const todo = await TodoSchema.findById(todoId);
+
+    if (!todo) {
+      return res
+        .status(404)
+        .json({ message: "Could not find todo for this id." });
+    }
+    todo.name = name;
+    todo.quantity = quantity;
+    await todo.save();
     return res
       .status(200)
-      .json({ message: "Updated Todo Successfully.", todos });
+      .json({ message: "Updated Todo Successfully.", todo: todo });
+  } catch (error) {
+    next(error);
   }
-  return res.status(404).json({ message: "Could not find todo for this id." });
 };
 
-export const deleteTodo = (req: Request, res: Response, next: NextFunction) => {
-  const params = req.params as RequestParams;
-  const tId = params.todoId;
-  todos = todos.filter((t) => t.id !== tId);
-  res.status(200).json({ message: "Deleted Todo Successfully.", todos });
+export const deleteTodo = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { todoId } = req.params;
+    // Find the todo before deleting
+    const todo = await TodoSchema.findById(todoId);
+    if (!todo) {
+      return res.status(404).json({ message: "Todo not found." });
+    }
+    // Delete the todo
+    await TodoSchema.findByIdAndDelete(todoId);
+    res
+      .status(200)
+      .json({ message: "Deleted Todo Successfully.", deletedTodo: todo });
+  } catch (error) {
+    next(error);
+  }
 };

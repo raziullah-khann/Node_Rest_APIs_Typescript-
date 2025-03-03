@@ -7,8 +7,8 @@ router.get("/", getTodo);
 
 router.post("/add-todo", addTodo);
 
-router.put("/todo/:todoId", updateTodo);
+router.put("/todo/:todoId", updateTodo as any);
 
-router.delete("/todo/:todoId", deleteTodo);
+router.delete("/todo/:todoId", deleteTodo as any);
 
 export default router;
